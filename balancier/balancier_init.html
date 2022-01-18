@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>DUT MMI - TD1</title>
+  <style>
+    body {
+      margin: 0px;
+      padding: 0px;
+    }
+  </style>
+</head>
+<body>
+<div id="container"><center>TD1</center></div>
+<audio id="player0" src="sounds/bass-kickers-1.wav">Pas de support de son</audio>
+<script type="module">
+  import * as THREE from '../three.js-dev/build/three.module.js';
+  import { OrbitControls } from '../three.js-dev/examples/jsm/controls/OrbitControls.js';
+
+  // variables Globale utilisées par les deux fonctions
+  var renderer,
+          camera,
+          scene,
+          cube, // global car utilisé dans start et dans animate
+          controls,
+          cubeLeft,
+          cubeRight,
+          player;
+
+  function start() {
+// initialisation du moteur de rendu
+    renderer = new THREE.WebGLRenderer();
+// création d'un canvas qui remplit la fenêtre
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x003333,1);
+    document.body.appendChild(renderer.domElement);
+
+// création d'une caméra perspective(angle d'ouverture, rapport largeur/hauteur, near, far)
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight,100,2000);
+    controls = new OrbitControls(camera,renderer.domElement);
+    camera.position.set(0,0,700);
+
+// création de la scène
+    scene = new THREE.Scene();
+
+// objet cube :
+// mesh : BoxGeometry(width, height, depth, widthSegments, heightSegments, depthSegments)
+// material : color(couleur diffuse) specular(couleur spéculaire) shininess(coefficient de phong)
+    cube = new THREE.Mesh(
+            new THREE.BoxGeometry(50, 50, 50),
+            new THREE.MeshPhongMaterial({
+              color: '#00ab11',specular: '#ffffff',shininess: 1000 }));
+    cube.position.set(0,160,0.0); // position relative au pere
+    scene.add(cube);
+
+    let S0 = new THREE.Mesh(
+            new THREE.BoxGeometry(600,20,20),
+            new THREE.MeshPhongMaterial({
+              color: '#a00', specular: '#fff', shininess: 1000 }));
+    S0.position.set(0,150,-90);
+    scene.add(S0);
+
+    let S1 = S0.clone();
+    S1.position.set(0,150,90);
+    scene.add(S1);
+
+    let S2 = new THREE.Mesh(
+            new THREE.BoxGeometry(20,20,160),
+            new THREE.MeshPhongMaterial({
+              color: '#a00', specular: '#fff', shininess: 1000 }));
+    S2.position.set(-290,150,0);
+    scene.add(S2);
+
+    let S3 = S2.clone();
+    S3.position.set(290,150,0);
+    scene.add(S3);
+
+    let C0 = new THREE.Mesh(
+            new THREE.CylinderGeometry(10,10,340,32),
+            new THREE.MeshPhongMaterial({
+              color: '#a00', specular: '#fff', shininess: 1000
+            })
+    )
+    C0.position.set(-290,-30,-90);
+    scene.add(C0);
+
+    let C1 = C0.clone();
+    C1.position.set(290,-30,-90);
+    scene.add(C1);
+
+    let C2 = C0.clone();
+    C2.position.set(-290,-30,90);
+    scene.add(C2);
+
+    let C3 = C0.clone();
+    C3.position.set(290,-30,90);
+    scene.add(C3);
+
+    let Sol = new THREE.Mesh(
+            new THREE.BoxGeometry(1000,1,500),
+            new THREE.MeshPhongMaterial({
+              color: '#b70', specular: '#fff', shininess: 1000
+            })
+    )
+    Sol.position.set(0,-200,0);
+    scene.add(Sol);
+
+    let Axe = new THREE.Mesh(
+            new THREE.CylinderGeometry(12,12,200,3),
+            new THREE.MeshPhongMaterial({
+              color: '#fff', specular: '#fff', shininess: 1000
+            })
+    )
+    Axe.rotation.x = Math.PI/2;
+    Axe.position.set(0,12,0);
+    cube.add(Axe);
+
+    let Bras = new THREE.Mesh(
+            new THREE.CylinderGeometry(15,15,200,3),
+            new THREE.MeshPhongMaterial({
+              color: '#44a', specular: '#fff', shininess: 1000
+            })
+    )
+    Bras.position.set(0,-125,0);
+    cube.add(Bras);
+
+    let Boule = new THREE.Mesh(
+            new THREE.SphereGeometry(60,16,10),
+            new THREE.MeshPhongMaterial({
+              color: '#bb0', specular: '#fff', shininess: 1000
+            })
+    )
+    Boule.position.set(0,-275,0);
+    cube.add(Boule);
+
+    cubeLeft = cube.clone();
+    cubeLeft.position.set(-120,160,0);
+    scene.add(cubeLeft);
+
+    cubeRight = cube.clone();
+    cubeRight.position.set(120,160,0);
+    scene.add(cubeRight);
+
+
+
+// sources de lumière (une ambiante et une ponctuelle placée en [-10;100;200])
+    var ambientLight = new THREE.AmbientLight(0x0f0f0f);
+    scene.add(ambientLight);
+    var pointLight = new THREE.PointLight(0xffffff,1);
+    pointLight.position.set(-10, 100, 200);
+    scene.add(pointLight);
+
+
+    player = document.getElementById('player0');
+  }
+
+  var clock = new THREE.Clock();
+  var t = 0,alpha=0;
+
+  function animate() {
+// rendu de la scène
+    renderer.render(scene, camera);
+// l'animation
+    t += clock.getDelta(); // temps écoulé (s) depuis le dernier appel
+    let oldAlpha = alpha;
+    alpha = (Math.PI/4)*Math.sin(Math.PI*t/1.5);
+
+    if (alpha > 0) {
+      cubeRight.rotation.z = alpha;
+      cubeLeft.rotation.z = 0;
+    } else {
+      cubeLeft.rotation.z = alpha;
+      cubeRight.rotation.z = 0;
+    }
+
+    if (alpha * oldAlpha < 0) {
+      console.log("TOCK");
+    }
+
+
+// lancement du frame suivant
+    requestAnimationFrame(function() { animate(); });
+  }
+
+  /******************************************************************************/
+  /* PROGRAMME PRINCIPAL ********************************************************/
+  start();
+  animate();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE HTML>
+<html lang="fr">
+<head>
+    <title>DUT MMI - TD3</title>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="../images/icon.png"/>
+    <style>
+        body {
+            margin: 0px;
+            padding: 0px;
+            background-color: #777777;
+        }
+
+        #canvas {
+            display: block;
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            right: 334px;
+            bottom: 10px;
+            background-color: #000000;
+        }
+
+        #info {
+            display: block;
+            position: absolute;
+            width: 300px;
+            top: 10px;
+            right: 10px;
+            bottom: 10px;
+            background-color: #EEEEEE;
+            border: 2px solid white;
+            padding: 5px;
+            font-size: 14pt;
+            font-family: times new roman;
+            font-weight: bold;
+            font-style: italic;
+            color: black;
+        }
+
+        input {
+            background-color: #FFFFFF;
+            border: none;
+            width: 180px;
+            color: black;
+            font-size: 14pt;
+            font-family: times new roman;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas"></div>
+<div id="info">
+    <table>
+        <tr>
+            <td>Chargement:</td>
+            <td><input type="text" id="action" value="0" class="info"/></td>
+        </tr>
+        <tr>
+            <td>Animation:</td>
+            <td><input type="radio" id="animOff" name="anim" value="0" style="width:20px;"/>OFF
+                <input type="radio" id="animOn" name="anim" value="1" style="width:20px;" checked/>ON
+            </td>
+        </tr>
+        <tr>
+            <td>Speed:</td>
+            <td><input type="text" id="speed" value="1" class="info" style="width:40px;"/> occil./second</td>
+        </tr>
+        <tr>
+            <td>Amplitude:</td>
+            <td><input type="text" id="amplitude" value="45" class="info" style="width:40px;"/> degree</td>
+        </tr>
+    </table>
+</div>
+
+<script type="module">
+    import * as THREE from '../three.js-dev/build/three.module.js';
+    import {OrbitControls} from '../three.js-dev/examples/jsm/controls/OrbitControls.js';
+    import {ColladaLoader} from '../three.js-dev/examples/jsm/loaders/ColladaLoader.js';
+
+    var clickInfo = [];
+    var container = document.getElementById("canvas");
+
+    // variables utilisées par les deux fonctions
+    var renderer, camera, scene, controls, plaque;
+    var clock = new THREE.Clock();
+    var SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_LEFT, SCREEN_TOP;
+    const raycaster = new THREE.Raycaster();
+    var t = 0;
+    var anim = true;
+
+    function onWindowResize() {
+        let w = container.offsetWidth;
+        let h = container.offsetHeight;
+        SCREEN_WIDTH = container.scrollWidth;
+        SCREEN_HEIGHT = container.scrollHeight;
+        SCREEN_LEFT = container.offsetLeft - container.scrollLeft + container.clientLeft;
+        SCREEN_TOP = container.offsetTop - container.scrollTop + container.clientTop;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+
+    function start() {
+// initialisation du moteur de rendu
+        renderer = new THREE.WebGLRenderer();
+// création d'un canvas dans un div
+        renderer.setClearColor(0x222222, 1);
+        window.addEventListener('resize', onWindowResize, false);
+
+        container.appendChild(renderer.domElement);
+        let w = container.offsetWidth;
+        let h = container.offsetHeight;
+        SCREEN_WIDTH = container.scrollWidth;
+        SCREEN_HEIGHT = container.scrollHeight;
+        SCREEN_LEFT = container.offsetLeft - container.scrollLeft + container.clientLeft;
+        SCREEN_TOP = container.offsetTop - container.scrollTop + container.clientTop;
+        renderer.setSize(w, h);
+
+// création d'une caméra perspective(angle d'ouverture, rapport largeur/hauteur, near, far)
+        camera = new THREE.PerspectiveCamera(30, w / h, 1, 60000);
+        camera.position.set(-200, 50, 250);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.minDistance = 10 / 2.54;
+        controls.maxDistance = 1000 / 2.54;
+        controls.update();
+
+// création de la scène
+        scene = new THREE.Scene();
+        scene.add(camera);
+
+        clock.start();
+        var loader = new ColladaLoader();
+        loader.load('./models/piecesLego.dae', onLoaded, onProgress, onError);
+
+        plaque = createPlaque(8, 6, '#ffff00');
+        plaque.position.set(0, 0, 0);
+        plaque.rotation.x = THREE.Math.degToRad(-90);
+        scene.add(plaque);
+
+// sources de lumière (une ambiante et une ponctuelle placée en [-10;100;200])
+        let ambientLight = new THREE.AmbientLight(0x202020);
+        scene.add(ambientLight);
+        let pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(-10, 100, 200);
+        scene.add(pointLight);
+
+
+        createPlaque(8, 6, '#ff0');
+    }
+
+    function animate() {
+// rendering of the scene
+        controls.update();
+        renderer.render(scene, camera);
+// run the next frame
+        requestAnimationFrame(animate);
+    }
+
+    function onLoaded(collada) {
+        let objects = collada.scene;
+        let repere = objects.getObjectByName('axes');
+        repere.scale.set(1, 1, 1);
+        repere.position.set(0, 0, 0);
+        plaque.add(repere);
+
+        let dt = clock.getElapsedTime();
+        document.getElementById('action').value = "Loaded after " + dt.toFixed(2) + " s.";
+    }
+
+    function onProgress(data) {
+        if (data.lengthComputable) {
+            var percentComplete = data.loaded / data.total * 100;
+            document.getElementById('action').value = "Loading:" + percentComplete.toFixed(1) + '%';
+        }
+    }
+
+    function onError(data) {
+        console.error(data);
+    }
+
+    function createPlaque(lx, ly, colorCode) {
+        let p = new THREE.Object3D();
+
+        let plaque = new THREE.Mesh(
+            new THREE.BoxGeometry(lx * 8, ly * 8, 3.2),
+            new THREE.MeshPhongMaterial({
+                color: colorCode, specular: '#fff', shininess: 1000
+            })
+        );
+
+        // Bosses
+        for (let i = 0; i < lx*ly; i++) {
+            let bosse = new THREE.Mesh(
+                new THREE.CylinderGeometry(2.4,2.4,1.6,10),
+                new THREE.MeshPhongMaterial({
+                    color: colorCode, specular: '#fff', shininess: 1000
+                })
+            );
+            bosse.rotation.x = Math.PI/2;
+
+            if (i < lx*ly/2) {
+                // if pour regarder si on est à la moitié des bosses, explication plus bas
+                bosse.position.set(i%lx * 8 - (lx * 8/2 - 3.6),i%ly*8-(ly*(3+1/3)),2.4);
+                // i%lx => Modulo qui donne une valeur qui tourne entre 0 et lx-1 (ici 0 et 7), pour pas dépasser la grille en axe x
+                // idem pour i%ly, mais pour l'axe y
+            } else {
+                // même formule
+                bosse.position.set(i%lx * 8 - (lx * 8/2 - 3.6),-i%ly*8+(ly*(3+1/3)),2.4);
+                // la formule précédente créée un décalage au niveau de l'axe y
+                // on la répète donc une deuxième fois sur l'autre moitié des bosses, mais en décalant la valeur de y pour remplir le vide
+            }
+
+            p.add(bosse);
+        }
+
+        p.add(plaque);
+
+        return p;
+    }
+
+
+    /******************************************************************************/
+    /* PROGRAMME PRINCIPAL ********************************************************/
+    start();
+    animate();
+
+</script>
+</body>
+</html>
