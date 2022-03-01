@@ -11,7 +11,7 @@
 </head>
 <body>
 <div id="container"><center>TD1</center></div>
-<audio id="player0" src="sounds/bass-kickers-1.wav">Pas de support de son</audio>
+<audio id="player0" src="./sounds/bass-kickers-1.wav">Pas de support de son</audio>
 <script type="module">
   import * as THREE from '../three.js-dev/build/three.module.js';
   import { OrbitControls } from '../three.js-dev/examples/jsm/controls/OrbitControls.js';
@@ -148,9 +148,6 @@
     var pointLight = new THREE.PointLight(0xffffff,1);
     pointLight.position.set(-10, 100, 200);
     scene.add(pointLight);
-
-
-    player = document.getElementById('player0');
   }
 
   var clock = new THREE.Clock();
@@ -172,8 +169,15 @@
       cubeRight.rotation.z = 0;
     }
 
+    player = document.getElementById('player0');
+
+    if (alpha*oldAlpha < 0){
+      console.log(oldAlpha*alpha)
+    }
+
     if (alpha * oldAlpha < 0) {
-      console.log("TOCK");
+      //console.log("TOCK");
+      player.play();
     }
 
 

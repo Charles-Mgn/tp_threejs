@@ -80,16 +80,21 @@
     import {OrbitControls} from '../three.js-dev/examples/jsm/controls/OrbitControls.js';
     import {ColladaLoader} from '../three.js-dev/examples/jsm/loaders/ColladaLoader.js';
 
-    var clickInfo = [];
-    var container = document.getElementById("canvas");
+    let clickInfo = [];
+    let container = document.getElementById("canvas");
 
     // variables utilisées par les deux fonctions
-    var renderer, camera, scene, controls, plaque;
-    var clock = new THREE.Clock();
-    var SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_LEFT, SCREEN_TOP;
+    let renderer, camera, scene, controls, plaque;
+    let clock = new THREE.Clock();
+    let SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_LEFT, SCREEN_TOP;
     const raycaster = new THREE.Raycaster();
-    var t = 0;
-    var anim = true;
+    let t = 0;
+    let anim = true;
+    let clavette_anim1 = null;
+    let clavette_anim2;
+    let balance;
+    let alpha = 0;
+    let stopDir = 0;
 
     function onWindowResize() {
         let w = container.offsetWidth;
@@ -133,11 +138,11 @@
         scene.add(camera);
 
         clock.start();
-        var loader = new ColladaLoader();
+        let loader = new ColladaLoader();
         loader.load('./models/piecesLego.dae', onLoaded, onProgress, onError);
 
-        plaque = createPlaque(8, 6, '#ffff00');
-        plaque.position.set(0, 0, 0);
+        plaque = createPlaque(18, 12, '#0f0');
+        plaque.position.set(-9*8, -40, 6*8);
         plaque.rotation.x = THREE.Math.degToRad(-90);
         scene.add(plaque);
 
@@ -147,15 +152,41 @@
         let pointLight = new THREE.PointLight(0xffffff, 1);
         pointLight.position.set(-10, 100, 200);
         scene.add(pointLight);
-
-
-        createPlaque(8, 6, '#ff0');
     }
 
     function animate() {
 // rendering of the scene
         controls.update();
         renderer.render(scene, camera);
+
+        let dt = clock.getDelta();
+        t += document.getElementById('speed').value * dt;
+
+        let oldAlpha = alpha;
+
+        if (clavette_anim1) {
+            if (document.getElementById('animOn').checked || alpha*oldAlpha > 1) {
+                alpha = document.getElementById('amplitude').value * Math.sin(Math.PI * t);
+
+                // stopDir regarde la direction dans laquelle l'animation s'est arrêtée
+                // stopDir est défini de base à 0, cette valeur est modifié lorsque l'on stop l'animation
+                // si l'animation s'est arrêtée à gauche, on inverse alpha pour que la direction soit la bonne lorsque l'on redémarre
+                if (stopDir) {
+                    stopDir < 0 ? alpha = -alpha : '';
+                }
+
+                clavette_anim1.rotation.z = THREE.Math.degToRad(alpha);
+                clavette_anim2.rotation.z = THREE.Math.degToRad(alpha);
+                balance.rotation.z = THREE.Math.degToRad(-alpha - 90);
+                balance.position.y = 0;
+            } else if (document.getElementById('animOff').checked && alpha*oldAlpha < 1) {
+                t = 0;
+                stopDir = oldAlpha;
+                // si oldAlpha > 0, l'animation s'est arrêtée sur la droite
+                // si oldAlpha < 0, l'animation s'est arrêtée sur la gauche
+            }
+        }
+
 // run the next frame
         requestAnimationFrame(animate);
     }
@@ -167,13 +198,113 @@
         repere.position.set(0, 0, 0);
         plaque.add(repere);
 
+        let H1 = objects.getObjectByName('barre_11_trous').clone();
+        H1.rotation.x = THREE.Math.degToRad(-90);
+        H1.position.set(4*8, 3.5*8, 8*8+5);
+        plaque.add(H1);
+
+        let clav = objects.getObjectByName('clavette').clone();
+        H1.add(clav);
+        clav.position.set(0, 0, -4);
+
+        let obj = clav.clone();
+        H1.add(obj);
+        obj.position.set(10*8, 0, -4);
+        obj = clav.clone();
+        H1.add(obj);
+        obj.position.set(4*8, 0, 4);
+        obj = clav.clone();
+        H1.add(obj);
+        obj.position.set(6*8, 0, 4);
+
+        obj = H1.clone();
+        H1.add(obj);
+        obj.rotation.x = THREE.Math.degToRad(180);
+        obj.position.set(0, 0, 8*6);
+
+        clavette_anim1 = clav.clone();
+        clavette_anim1.position.set(4*8, 0, 4);
+        H1.add(clavette_anim1);
+        clavette_anim1.add(createBalancoire1(objects));
+
+        clavette_anim2 = clav.clone();
+        clavette_anim2.position.set(6*8, 0, 4);
+        H1.add(clavette_anim2);
+        clavette_anim2.add(createBalancoire2(objects));
+
+        let stopFix = objects.getObjectByName('stop_fixation').clone();
+        clav.add(stopFix);
+        stopFix.position.set(0, 0, -4);
+        stopFix.rotation.z = THREE.Math.degToRad(90);
+
+        obj = stopFix.clone();
+        clav.add(obj);
+        obj.position.set(10*8, 0, -4);
+        obj = stopFix.clone();
+        clav.add(obj);
+        obj.position.set(10*8, 0, 8*7+4);
+        obj = stopFix.clone();
+        clav.add(obj);
+        obj.position.set(0, 0, 8*7+4);
+
+        let axe = objects.getObjectByName('axe7').clone();
+        H1.add(axe);
+        axe.position.set(0, 8*7+4, -8);
+        axe.rotation.x = THREE.Math.degToRad(90);
+
+        obj = axe.clone();
+        H1.add(obj);
+        obj.position.set(10*8, 8*7+4, -8);
+        obj = axe.clone();
+        H1.add(obj);
+        obj.position.set(0, 8*7+4, 8*7);
+        obj = axe.clone();
+        H1.add(obj);
+        obj.position.set(10*8, 8*7+4, 8*7);
+
+        let briqueClav = objects.getObjectByName('brique2_clavette').clone();
+        H1.add(briqueClav);
+        briqueClav.position.set(0, 8*8+5.5, -8*2);
+        briqueClav.rotation.x = THREE.Math.degToRad(90);
+
+        obj = briqueClav.clone();
+        H1.add(obj);
+        obj.position.set(10*8, 8*8+5.5, -8*2);
+
+        obj = briqueClav.clone();
+        H1.add(obj);
+        obj.position.set(10*8, 8*8+5.5, 8*8);
+        obj.rotation.z = THREE.Math.degToRad(180);
+        obj = briqueClav.clone();
+        H1.add(obj);
+        obj.position.set(0, 8*8+5.5, 8*8);
+        obj.rotation.z = THREE.Math.degToRad(180);
+
+        obj = stopFix.clone();
+        briqueClav.add(obj);
+        obj.position.set(0, 8, 8-2.5);
+        obj.rotation.x = THREE.Math.degToRad(90);
+        obj = stopFix.clone();
+        briqueClav.add(obj);
+        obj.position.set(10*8, 8, 8-2.5);
+        obj.rotation.x = THREE.Math.degToRad(90);
+        obj = stopFix.clone();
+        briqueClav.add(obj);
+        obj.position.set(0, 8*9, 8-2.5);
+        obj.rotation.x = THREE.Math.degToRad(90);
+        obj = stopFix.clone();
+        briqueClav.add(obj);
+        obj.position.set(10*8, 8*9, 8-2.5);
+        obj.rotation.x = THREE.Math.degToRad(90);
+
+
         let dt = clock.getElapsedTime();
         document.getElementById('action').value = "Loaded after " + dt.toFixed(2) + " s.";
     }
 
     function onProgress(data) {
         if (data.lengthComputable) {
-            var percentComplete = data.loaded / data.total * 100;
+            let percentComplete = data.loaded / data.total * 100;
             document.getElementById('action').value = "Loading:" + percentComplete.toFixed(1) + '%';
         }
     }
@@ -191,35 +322,118 @@
                 color: colorCode, specular: '#fff', shininess: 1000
             })
         );
+        plaque.name = 'plaque_' + lx + '_' + ly;
+        plaque.position.set(lx*4,ly*4, -1.6)
 
         // Bosses
-        for (let i = 0; i < lx*ly; i++) {
-            let bosse = new THREE.Mesh(
-                new THREE.CylinderGeometry(2.4,2.4,1.6,10),
-                new THREE.MeshPhongMaterial({
-                    color: colorCode, specular: '#fff', shininess: 1000
-                })
-            );
-            bosse.rotation.x = Math.PI/2;
+        for (let i = 0; i < lx; i++) {
 
-            if (i < lx*ly/2) {
-                // if pour regarder si on est à la moitié des bosses, explication plus bas
-                bosse.position.set(i%lx * 8 - (lx * 8/2 - 3.6),i%ly*8-(ly*(3+1/3)),2.4);
-                // i%lx => Modulo qui donne une valeur qui tourne entre 0 et lx-1 (ici 0 et 7), pour pas dépasser la grille en axe x
-                // idem pour i%ly, mais pour l'axe y
-            } else {
-                // même formule
-                bosse.position.set(i%lx * 8 - (lx * 8/2 - 3.6),-i%ly*8+(ly*(3+1/3)),2.4);
-                // la formule précédente créée un décalage au niveau de l'axe y
-                // on la répète donc une deuxième fois sur l'autre moitié des bosses, mais en décalant la valeur de y pour remplir le vide
+            for (let n = 0; n < ly; n++) {
+                let bosse = new THREE.Mesh(
+                    new THREE.CylinderGeometry(2.4,2.4,1.6,10),
+                    new THREE.MeshPhongMaterial({
+                        color: colorCode, specular: '#fff', shininess: 1000
+                    })
+                );
+                bosse.rotation.x = Math.PI/2;
+                bosse.name = 'C_' + i + '_' + n;
+                bosse.position.set(i*8+4,n*8+4,0.8);
+
+                p.add(bosse);
             }
-
-            p.add(bosse);
         }
 
         p.add(plaque);
 
         return p;
+    }
+
+    function createBalancoire1(objects) {
+        let p = objects.getObjectByName('barre_9_trous').clone();
+        p.position.set(0, 0, 4);
+        p.rotation.z = THREE.Math.degToRad(90);
+
+        let obj = p.clone();
+        obj.position.set(0, 0, 8*4);
+        obj.rotation.z = THREE.Math.degToRad(0);
+        p.add(obj);
+
+        let matJaune = findMaterial(objects, '#ff0').clone();
+        p.material = matJaune;
+        obj.material = matJaune;
+
+        let axe = objects.getObjectByName('axe6').clone();
+        axe.position.set(8*8, 0, -8);
+        p.add(axe);
+
+        balance = objects.getObjectByName('barre_3_trous').clone();
+        balance.position.set(8*8, -8*2, 8);
+        balance.rotation.z = THREE.Math.degToRad(90);
+        p.add(balance);
+
+        let obj1 = balance.clone();
+        let obj2 = balance.clone();
+
+        obj1.position.set(8*2, 0, 8*2);
+        obj1.rotation.z = THREE.Math.degToRad(180);
+        balance.add(obj1);
+
+        obj2.position.set(8*2, 0, 8);
+        obj2.rotation.z = THREE.Math.degToRad(180);
+        balance.add(obj2);
+
+        let stop = objects.getObjectByName('demi_stop').clone();
+        stop.position.set(0,0,2);
+        axe.add(stop);
+
+        obj = stop.clone();
+        obj.position.set(0, 0, 8*5+6);
+        axe.add(obj);
+
+        return p;
+    }
+
+    function createBalancoire2(objects) {
+        let p = objects.getObjectByName('barre_9_trous').clone();
+        p.position.set(0, 0, 4);
+        p.rotation.z = THREE.Math.degToRad(90);
+
+        let obj = p.clone();
+        obj.position.set(0, 0, 8*4);
+        obj.rotation.z = THREE.Math.degToRad(0);
+        p.add(obj);
+
+        let matJaune = findMaterial(objects, '#ff0').clone();
+        p.material = matJaune;
+        obj.material = matJaune;
+
+        let axe = objects.getObjectByName('axe6').clone();
+        axe.position.set(8*8, 0, -8);
+        p.add(axe);
+
+        let stop = objects.getObjectByName('demi_stop').clone();
+        stop.position.set(0,0,2);
+        axe.add(stop);
+
+        obj = stop.clone();
+        obj.position.set(0, 0, 8*5+6);
+        axe.add(obj);
+
+        return p;
+    }
+
+    function findMaterial(objects, colorCode) {
+        let mat = null;
+        let color = new THREE.Color(colorCode);
+        if (objects.material && objects.material.color.equals(color)) {
+            return objects.material;
+        }
+        objects.traverse(function(child) {
+            if (child.material && child.material.color && child.material.color.equals(color)) {
+                mat = child.material;
+            }
+        })
+        return mat;
     }
 
 
